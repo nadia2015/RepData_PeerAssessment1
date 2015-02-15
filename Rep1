@@ -1,0 +1,88 @@
+unzip("activity.zip", files=NULL, overwrite=TRUE, exdir=".", unzip="internal", setTimes=FALSE)
+library(ggplot2)
+library(lattice)
+
+data <- read.csv("activity.csv", na.strings = "NA")
+
+dateList <- list(data$date)
+newData <- aggregate(data$steps, by= dateList, FUN=sum)
+
+hist(newData[,2], main = "Total Number of Steps per Day", xlab="Number of Steps", ylab="Count")
+
+newDataMean <- mean(newData[,2], na.rm=TRUE)
+newDataMedian <- median(newData[,2], na.rm=TRUE)
+
+intervalList <- list(as.factor(data$interval))
+avg <- aggregate(as.numeric(data$steps), by=intervalList, FUN=mean, na.rm=TRUE)
+
+## Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+avg[avg$x== max(avg[,2]),]
+
+
+
+## Num of rows with missing values in the original data frame
+num <- length(data$steps==NA)
+num
+
+dat <- data
+for(i in 1:nrow(dat)){
+          if(is.na(dat[i,1])){
+                dat[i,1] <- avg$x[avg$Group.1==dat[i,3]] 
+          }
+}
+
+
+day <- weekdays(as.Date(dat$date))
+newDat <- cbind(dat, day)
+week <- vector(mode="character",length=nrow(newDat))
+for(i in 1:nrow(newDat)){
+        if(as.character(newDat[i,4]) =="Saturday" | as.character(newDat[i,4])=="Sunday"){
+                week[i] <- "weekend"
+        }else{
+                week[i] <- "weekday"
+        }
+}
+#Missing data filled in
+newDat <- cbind(newDat, week)
+
+
+hist(newDat$steps, main = "Total Number of Steps per Day", xlab="Number of Steps", ylab="Count")
+
+newDatMean <- mean(newDat$steps)
+newDatMedian <- median(newDat$steps)
+
+
+# Are there differences in activity patterns between weekdays and weekends?
+
+weekdayData<- newDat[newDat$week == "weekday",]
+weekendData <- newDat[newDat$week == "weekend",]
+
+weekdayIList <- list(as.factor(weekdayData$interval))
+weekendIList <- list(as.factor(weekendData$interval))
+
+avgWeekday <- aggregate(weekdayData$steps, by= weekdayIList, FUN=mean)
+avgWeekend <- aggregate(weekendData$steps, by= weekendIList, FUN=mean)
+
+numRows <- nrow(avgWeekday)
+
+weekdayVec <- vector(mode="character")
+weekdayVec <- c(weekdayVec,"weekday")
+weekdayVec <- rep(weekdayVec, numRows)
+
+weekendVec <- vector(mode="character")
+weekendVec <- c(weekendVec,"weekend")
+weekendVec<-rep(weekendVec, numRows)
+
+
+avgWeekday <- cbind(avgWeekday,weekdayVec)
+avgWeekend <- cbind(avgWeekend,weekendVec)
+
+colnames(avgWeekday)<-c("interval","steps","week")
+colnames(avgWeekend)<-c("interval","steps","week")
+
+
+avgWeekSplitData<-rbind(avgWeekday,avgWeekend)
+
+xyplot(steps ~ interval | week, data = avgWeekSplitData, layout = c(1, 2),type='l', ylab="Number of steps", xlab="Interval")
+ 
+
